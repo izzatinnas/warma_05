@@ -230,9 +230,32 @@ function setupIuran(){
 function iuranPeriod(){return `${$("iuranTahun").value}-${String($("iuranBulan").value).padStart(2,"0")}`;}
 
 async function start(user){
-  if(!user.email_confirmed_at){
-    await sb.auth.signOut();
-    return alert("Email belum terverifikasi. Silakan buka link verifikasi yang dikirim ke email Anda.");
+ if(!user.email_confirmed_at){
+  await sb.auth.signOut();
+  return alert("Email belum terverifikasi. Silakan buka link verifikasi yang dikirim ke email Anda.");
+}
+
+const { data: profile, error: profileError } = await sb
+  .from("profiles")
+  .select("nama,email,hp,role,status_akun")
+  .eq("id", user.id)
+  .single();
+
+if(profileError){
+  console.error(profileError);
+  await sb.auth.signOut();
+  return alert("Data profil tidak dapat dibaca. Silakan hubungi pengurus.");
+}
+
+if(profile.status_akun === "menunggu"){
+  await sb.auth.signOut();
+  return alert("Pendaftaran Anda sudah diterima dan sedang menunggu persetujuan pengurus RT.");
+}
+
+if(profile.status_akun === "ditolak"){
+  await sb.auth.signOut();
+  return alert("Pendaftaran Anda belum disetujui oleh pengurus RT. Silakan hubungi pengurus untuk informasi lebih lanjut.");
+}
   }
   const {data:p,error}=await sb.from("profiles").select("id,nama,email,hp,role").eq("id",user.id).single();
   if(error){console.error(error);await sb.auth.signOut();return alert("Profil akun belum siap. Jalankan supabase_schema.sql terlebih dahulu.");}
