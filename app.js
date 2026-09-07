@@ -43,115 +43,129 @@ async function boot(){
   const {data:{session}} = await sb.auth.getSession();
   if(session) await start(session.user); else showLogin();
 }
-
 function bindAuth(){
   document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
-    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active")); b.classList.add("active");
-    $("loginForm").classList.toggle("hidden", b.dataset.auth!=="login");
-    $("registerForm").classList.toggle("hidden", b.dataset.auth!=="register");
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    $("loginForm").classList.toggle("hidden",b.dataset.auth!=="login");
+    $("registerForm").classList.toggle("hidden",b.dataset.auth!=="register");
     $("updatePasswordForm").classList.add("hidden");
   });
+
   $("loginForm").onsubmit=async e=>{
     e.preventDefault();
-    const email=$("loginEmail").value.trim(), password=$("loginPassword").value;
-    const {error}=await sb.auth.signInWithPassword({email,password});
+
+    const email=$("loginEmail").value.trim().toLowerCase();
+    const password=$("loginPassword").value;
+
+    const {error}=await sb.auth.signInWithPassword({
+      email,
+      password
+    });
+
     if(error) return alert(errorMessage(error));
   };
-  let pendingRegistration = null;
-  let otpBusy = false;
-  let otpCooldownTimer = null;
-  async function callWaOtp(action, hp, code="") {
-    if(!db?.waOtpFunctionUrl) throw new Error("OTP WhatsApp belum dikonfigurasi. Isi WA_OTP_FUNCTION_URL di supabase-config.js.");
-    const r=await fetch(db.waOtpFunctionUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,phone:hp,code})});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(j.error||"Gagal memproses OTP WhatsApp.");
-    return j;
-  }
-  function setOtpCooldown(seconds=60){
-    const btn=$("resendOtpBtn");
-    if(!btn) return;
-    clearInterval(otpCooldownTimer);
-    let left=seconds;
-    btn.disabled=true;
-    btn.textContent=`Kirim ulang OTP (${left})`;
-    otpCooldownTimer=setInterval(()=>{
-      left--;
-      if(left<=0){ clearInterval(otpCooldownTimer); btn.disabled=false; btn.textContent="Kirim ulang OTP"; }
-      else btn.textContent=`Kirim ulang OTP (${left})`;
-    },1000);
-  }
 
-  async function sendRegistrationOtp(){
-    if(otpBusy) return;
-    const nama=$("regNama").value.trim(), email=$("regEmail").value.trim().toLowerCase(), password=$("regPassword").value, hp=normalizePhone($("regHp").value);
-    if(!nama || !email) return alert("Nama dan email wajib diisi.");
-    if(password.length<8) return alert("Password minimal 8 karakter.");
-    if(!isValidWhatsApp(hp)) return alert("Masukkan nomor WhatsApp aktif Indonesia, contoh 081234567890.");
-    try {
-      otpBusy=true;
-      await callWaOtp("send", hp);
-      pendingRegistration={nama,email,password,hp};
-      $("registerOtpBox").classList.remove("hidden");
-      $("sendOtpBtn").classList.add("hidden");
-      $("regHp").readOnly=true;
-      msg("OTP sudah dikirim ke WhatsApp.");
-      setOtpCooldown(60);
-    } catch(e) { alert(errorMessage(e)); } finally { otpBusy=false; }
-  }
-  $("registerForm").onsubmit=async e=>{e.preventDefault(); if(!pendingRegistration) await sendRegistrationOtp();};
-  $("resendOtpBtn").onclick=async()=>{
-    if(otpBusy) return;
-    const hp=pendingRegistration?.hp || normalizePhone($("regHp").value);
-    if(!hp) return;
-    try { otpBusy=true; await callWaOtp("send",hp); alert("OTP baru sudah dikirim."); setOtpCooldown(60); } catch(e){ alert(errorMessage(e)); } finally { otpBusy=false; }
+  $("registerForm").onsubmit=async e=>{
+    e.preventDefault();
+
+    const nama=$("regNama").value.trim();
+    const email=$("regEmail").value.trim().toLowerCase();
+    const password=$("regPassword").value;
+    const hp=normalizePhone($("regHp").value);
+
+    if(!nama || !email){
+      return alert("Nama dan email wajib diisi.");
+    }
+
+    if(password.length<8){
+      return alert("Password minimal 8 karakter.");
+    }
+
+    if(!isValidWhatsApp(hp)){
+      return alert(
+        "Masukkan nomor WhatsApp Indonesia yang valid, contoh 081234567890."
+      );
+    }
+
+    const {data:res,error}=await sb.auth.signUp({
+      email,
+      password,
+      options:{
+        data:{
+          nama,
+          hp
+        },
+        emailRedirectTo:
+          window.location.origin + window.location.pathname
+      }
+    });
+
+    if(error){
+      return alert(errorMessage(error));
+    }
+
+    $("registerForm").reset();
+
+    if(res.session){
+      msg("Pendaftaran berhasil.");
+    }else{
+      alert(
+        "Pendaftaran berhasil. Silakan cek email untuk verifikasi akun sebelum login."
+      );
+    }
   };
-  $("verifyOtpBtn").onclick=async()=>{
-    if(otpBusy) return;
-    if(!pendingRegistration) return sendRegistrationOtp();
-    const code=$("regOtp").value.trim();
-    if(!code) return alert("Masukkan kode OTP.");
-    try {
-      otpBusy=true;
-      await callWaOtp("verify",pendingRegistration.hp,code);
-      const {data:res,error}=await sb.auth.signUp({email:pendingRegistration.email,password:pendingRegistration.password,options:{data:{nama:pendingRegistration.nama,hp:pendingRegistration.hp}}});
-      if(error) return alert(errorMessage(error));
-      if(res.session) msg("WhatsApp terverifikasi dan pendaftaran berhasil.");
-      else alert("WhatsApp terverifikasi. Pendaftaran berhasil. Cek email untuk konfirmasi akun, lalu masuk ke WARMA.");
-      $("registerForm").reset(); $("registerOtpBox").classList.add("hidden"); $("sendOtpBtn").classList.remove("hidden"); $("regHp").readOnly=false; pendingRegistration=null;
-      clearInterval(otpCooldownTimer);
-      $("resendOtpBtn").disabled=false; $("resendOtpBtn").textContent="Kirim ulang OTP";
-    } catch(e){ alert(errorMessage(e)); } finally { otpBusy=false; }
-  };
+
   $("forgotPasswordBtn").onclick=async()=>{
     const email=$("loginEmail").value.trim().toLowerCase();
-    if(!email) return alert("Masukkan email aktif yang terdaftar. Untuk reset lewat WhatsApp, gunakan tombol Reset via WhatsApp.");
-    const redirectTo=window.location.origin+window.location.pathname;
-    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo});
-    if(error) return alert(errorMessage(error));
-    alert("Jika email terdaftar, link reset password sudah dikirim. Periksa Inbox dan Spam.");
+
+    if(!email){
+      return alert("Masukkan email aktif yang terdaftar.");
+    }
+
+    const redirectTo=
+      window.location.origin + window.location.pathname;
+
+    const {error}=await sb.auth.resetPasswordForEmail(
+      email,
+      {redirectTo}
+    );
+
+    if(error){
+      return alert(errorMessage(error));
+    }
+
+    alert(
+      "Jika email terdaftar, link reset password sudah dikirim. Periksa Inbox dan Spam."
+    );
   };
-  const waBtn=$("forgotWhatsAppBtn");
-  if(waBtn) waBtn.onclick=async()=>{
-    const hp=normalizePhone($("loginWhatsApp").value);
-    if(!isValidWhatsApp(hp)) return alert("Masukkan nomor WhatsApp aktif, contoh 081234567890.");
-    if(!db?.waRecoveryFunctionUrl) return alert("Reset WhatsApp belum diaktifkan. Admin perlu memasang Supabase Edge Function dan provider WhatsApp.");
-    try{
-      const r=await fetch(db.waRecoveryFunctionUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:hp})});
-      const j=await r.json().catch(()=>({}));
-      if(!r.ok) throw new Error(j.error||"Gagal mengirim reset WhatsApp.");
-      alert("Jika nomor WhatsApp terdaftar, instruksi reset sudah dikirim ke WhatsApp tersebut.");
-    }catch(e){ alert(errorMessage(e)); }
-  };
+
   $("updatePasswordForm").onsubmit=async e=>{
     e.preventDefault();
-    const a=$("newPassword").value,b=$("newPassword2").value;
-    if(a.length<8) return alert("Password minimal 8 karakter.");
-    if(a!==b) return alert("Konfirmasi password tidak sama.");
-    const {error}=await sb.auth.updateUser({password:a});
-    if(error) return alert(errorMessage(error));
+
+    const a=$("newPassword").value;
+    const b=$("newPassword2").value;
+
+    if(a.length<8){
+      return alert("Password minimal 8 karakter.");
+    }
+
+    if(a!==b){
+      return alert("Konfirmasi password tidak sama.");
+    }
+
+    const {error}=await sb.auth.updateUser({
+      password:a
+    });
+
+    if(error){
+      return alert(errorMessage(error));
+    }
+
     alert("Password berhasil diubah. Silakan masuk kembali.");
     await sb.auth.signOut();
   };
+
   $("logoutBtn").onclick=()=>sb.auth.signOut();
 }
 
