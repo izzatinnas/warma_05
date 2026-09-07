@@ -5,7 +5,7 @@
  * Supabase -> Project Settings -> API.
  * JANGAN pernah menaruh service_role key di file ini atau GitHub.
  */
-const SUPABASE_URL = "https://mksrjrwfyyycdepovppk.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://mksrjrwfyyycdepovppk.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_CvLYMvMZ2Z6pD4JIi9q5kw_Vbx35lsW";
 window.WARMA_SUPABASE = {
   url: SUPABASE_URL,
