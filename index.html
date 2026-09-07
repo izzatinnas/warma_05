@@ -30,28 +30,16 @@
         <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
         <button class="primary wide" type="submit">Masuk ke WARMA</button>
         <button id="forgotPasswordBtn" type="button" class="link-btn">Reset Password via Email</button>
-        <div class="recovery-box">
-          <strong>Reset via WhatsApp</strong>
-          <input id="loginWhatsApp" type="tel" inputmode="tel" placeholder="Nomor WhatsApp terdaftar" autocomplete="tel">
-          <button id="forgotWhatsAppBtn" type="button" class="outline wide">Kirim Link Reset ke WhatsApp</button>
-          <small class="muted">Fitur WhatsApp memerlukan provider WhatsApp + Supabase Edge Function. Tidak ada password yang dikirim lewat chat.</small>
-        </div>
-      </form>
+        </form>
 
       <form id="registerForm" class="auth-form hidden">
         <input id="regNama" placeholder="Nama lengkap" autocomplete="name" required>
         <input id="regEmail" type="email" placeholder="Email aktif" autocomplete="email" required>
         <input id="regPassword" type="password" placeholder="Buat password (min. 8 karakter)" autocomplete="new-password" minlength="8" required>
         <input id="regHp" type="tel" inputmode="tel" placeholder="Nomor WhatsApp aktif (08xxxxxxxxxx)" autocomplete="tel" required>
-        <small class="muted">WhatsApp akan diverifikasi dengan OTP sebelum akun dibuat.</small>
-        <div id="registerOtpBox" class="recovery-box hidden">
-          <strong>Verifikasi WhatsApp</strong>
-          <small class="muted">Masukkan kode OTP yang dikirim ke nomor WhatsApp kamu.</small>
-          <input id="regOtp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Kode OTP">
-          <button id="verifyOtpBtn" type="button" class="outline wide">Verifikasi OTP & Daftar</button>
-          <button id="resendOtpBtn" type="button" class="link-btn">Kirim ulang OTP</button>
+        <small class="muted">Nomor WhatsApp wajib valid dan akan disimpan sebagai nomor kontak. Tidak ada verifikasi OTP WhatsApp..</small>
         </div>
-        <button id="sendOtpBtn" class="primary wide" type="submit">Kirim OTP WhatsApp</button>
+        <button class="primary wide" type="submit">Daftar</button>
       </form>
 
       <form id="updatePasswordForm" class="auth-form hidden">
