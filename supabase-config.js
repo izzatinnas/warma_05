@@ -5,8 +5,8 @@
  * Supabase -> Project Settings -> API.
  * JANGAN pernah menaruh service_role key di file ini atau GitHub.
  */
-const SUPABASE_URL = "";
-const SUPABASE_ANON_KEY = "";
+const SUPABASE_URL = "https://mksrjrwfyyycdepovppk.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "sb_publishable_CvLYMvMZ2Z6pD4JIi9q5kw_Vbx35lsW";
 
 // Isi setelah Edge Function WhatsApp dipasang. Contoh:
 // https://PROJECT.supabase.co/functions/v1/send-wa-reset
