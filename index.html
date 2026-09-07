@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071a33">
+  <meta name="description" content="WARMA - Sistem Informasi dan Laporan Warga RT 05 RW 021">
+  <title>WARMA RT 05/021</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-logo"></div>
+  <div class="bg-overlay"></div>
+
+  <!-- LOGIN -->
+  <section id="loginPage" class="auth-page">
+    <div class="auth-card">
+      <img src="assets/logo-rt05.png" class="auth-logo" alt="Logo RT 05 RW 021">
+      <p class="eyebrow">SISTEM INFORMASI WARGA</p>
+      <h1>WARMA</h1>
+      <p class="muted">Warga Maju & Sukses<br>RT 05 / RW 021</p>
+
+      <div class="tabs">
+        <button class="tab active" data-auth="login">Masuk</button>
+        <button class="tab" data-auth="register">Daftar</button>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <input id="loginEmail" type="email" placeholder="Email" autocomplete="email" required>
+        <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
+        <button class="primary wide" type="submit">Masuk ke WARMA</button>
+        <button id="forgotPasswordBtn" type="button" class="link-btn">Reset Password via Email</button>
+        <div class="recovery-box">
+          <strong>Reset via WhatsApp</strong>
+          <input id="loginWhatsApp" type="tel" inputmode="tel" placeholder="Nomor WhatsApp terdaftar" autocomplete="tel">
+          <button id="forgotWhatsAppBtn" type="button" class="outline wide">Kirim Link Reset ke WhatsApp</button>
+          <small class="muted">Fitur WhatsApp memerlukan provider WhatsApp + Supabase Edge Function. Tidak ada password yang dikirim lewat chat.</small>
+        </div>
+      </form>
+
+      <form id="registerForm" class="auth-form hidden">
+        <input id="regNama" placeholder="Nama lengkap" autocomplete="name" required>
+        <input id="regEmail" type="email" placeholder="Email aktif" autocomplete="email" required>
+        <input id="regPassword" type="password" placeholder="Buat password (min. 8 karakter)" autocomplete="new-password" minlength="8" required>
+        <input id="regHp" type="tel" inputmode="tel" placeholder="Nomor WhatsApp aktif (08xxxxxxxxxx)" autocomplete="tel" required>
+        <small class="muted">WhatsApp akan diverifikasi dengan OTP sebelum akun dibuat.</small>
+        <div id="registerOtpBox" class="recovery-box hidden">
+          <strong>Verifikasi WhatsApp</strong>
+          <small class="muted">Masukkan kode OTP yang dikirim ke nomor WhatsApp kamu.</small>
+          <input id="regOtp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Kode OTP">
+          <button id="verifyOtpBtn" type="button" class="outline wide">Verifikasi OTP & Daftar</button>
+          <button id="resendOtpBtn" type="button" class="link-btn">Kirim ulang OTP</button>
+        </div>
+        <button id="sendOtpBtn" class="primary wide" type="submit">Kirim OTP WhatsApp</button>
+      </form>
+
+      <form id="updatePasswordForm" class="auth-form hidden">
+        <input id="newPassword" type="password" placeholder="Password baru" minlength="8" autocomplete="new-password" required>
+        <input id="newPassword2" type="password" placeholder="Ulangi password baru" minlength="8" autocomplete="new-password" required>
+        <button class="primary wide" type="submit">Simpan Password Baru</button>
+      </form>
+
+      <p class="demo-note">Pastikan email dan nomor WhatsApp benar-benar aktif. Reset password tersedia melalui email, dan dapat diaktifkan lewat WhatsApp. Akun admin dibuat melalui Supabase. Pendaftaran publik otomatis menjadi <b>Warga</b>.</p>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <section id="appPage" class="app-page hidden">
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/logo-rt05.png" alt="Logo">
+        <div><strong>WARMA</strong><span>RT 05 / RW 021</span></div>
+      </div>
+      <div class="user-area">
+        <div id="userBadge"></div>
+        <button id="logoutBtn" class="outline">Keluar</button>
+      </div>
+    </header>
+
+    <div class="app-layout">
+      <aside class="sidebar">
+        <button class="nav-btn active" data-page="dashboard">🏠 Dashboard</button>
+        <button class="nav-btn admin-only" data-page="warga">👥 Data Warga</button>
+        <button class="nav-btn" data-page="iuran">💳 Iuran Bulanan</button>
+        <button class="nav-btn" data-page="arisan">🎁 Data Arisan</button>
+        <button class="nav-btn admin-only" data-page="keuangan">💰 Keuangan RT</button>
+        <button class="nav-btn admin-only" data-page="laporan">📊 Laporan</button>
+        <button class="nav-btn" data-page="pengumuman">📢 Pengumuman</button>
+        <button class="nav-btn" data-page="surat">📄 Surat Warga</button>
+        <button class="nav-btn" data-page="kegiatan">📸 Kegiatan</button>
+        <button class="nav-btn" data-page="darurat">🚨 Kontak Darurat</button>
+      </aside>
+
+      <main class="content">
+        <div id="appMessage" class="panel hidden" role="status"></div>
+        <!-- DASHBOARD -->
+        <section id="page-dashboard" class="page">
+          <div class="page-head"><div><p class="eyebrow">DASHBOARD</p><h2>Selamat datang di WARMA</h2></div></div>
+          <div class="stats">
+            <article class="stat"><span>👥</span><div><small>Total Warga</small><strong id="dashWarga">0</strong></div></article>
+            <article class="stat"><span>💳</span><div><small>Iuran Bulan Ini</small><strong id="dashIuran">Rp 0</strong></div></article>
+            <article class="stat"><span>📥</span><div><small>Pemasukan</small><strong id="dashMasuk">Rp 0</strong></div></article>
+            <article class="stat"><span>💰</span><div><small>Saldo Kas</small><strong id="dashSaldo">Rp 0</strong></div></article>
+          </div>
+          <div class="grid-2">
+            <article class="panel"><h3>📌 Ringkasan Sistem</h3><div id="dashboardSummary"></div></article>
+            <article class="panel"><h3>📢 Pengumuman Terbaru</h3><div id="dashboardAnnouncements"></div></article>
+          </div>
+        </section>
+
+        <!-- WARGA -->
+        <section id="page-warga" class="page hidden">
+          <div class="page-head"><div><p class="eyebrow">DATABASE</p><h2>Data Warga</h2></div><button id="toggleWargaForm" class="primary">+ Tambah Warga</button></div>
+          <form id="wargaForm" class="form-grid panel hidden">
+            <input id="wargaNama" placeholder="Nama lengkap" required>
+            <input id="wargaHp" placeholder="Nomor HP / WhatsApp">
+            <input id="wargaAlamat" placeholder="Alamat / Nomor Rumah">
+            <select id="wargaStatus"><option>Aktif</option><option>Pindah</option><option>Nonaktif</option></select>
+            <button class="primary" type="submit">Simpan</button>
+          </form>
+          <div class="toolbar"><input id="searchWarga" placeholder="🔎 Cari nama warga..."></div>
+          <div class="table-wrap panel"><table><thead><tr><th>No</th><th>Nama</th><th>HP</th><th>Alamat</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="wargaRows"></tbody></table></div>
+        </section>
+
+        <!-- IURAN -->
+        <section id="page-iuran" class="page hidden">
+          <div class="page-head"><div><p class="eyebrow">PEMBAYARAN</p><h2>Iuran Bulanan</h2></div></div>
+          <div class="filter-row panel">
+            <select id="iuranBulan"></select>
+            <select id="iuranTahun"></select>
+            <input id="iuranNominal" type="number" value="10000" min="0" placeholder="Nominal iuran">
+            <button id="saveIuranNominal" class="primary">Simpan Nominal</button>
+          </div>
+          <div class="table-wrap panel"><table><thead><tr><th>No</th><th>Nama</th><th>Status</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody id="iuranRows"></tbody></table></div>
+        </section>
+
+
+        <!-- ARISAN -->
+        <section id="page-arisan" class="page hidden">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">ARISAN WARGA</p>
+              <h2>Data Arisan & Penerima</h2>
+            </div>
+            <button id="toggleArisanForm" class="primary admin-only">+ Tambah Peserta Arisan</button>
+          </div>
+
+          <div class="stats">
+            <article class="stat"><span>👥</span><div><small>Total Peserta</small><strong id="arisanTotalPeserta">0</strong></div></article>
+            <article class="stat"><span>🏆</span><div><small>Sudah Mendapat</small><strong id="arisanSudahDapat">0</strong></div></article>
+            <article class="stat"><span>⏳</span><div><small>Belum Mendapat</small><strong id="arisanBelumDapat">0</strong></div></article>
+            <article class="stat"><span>💰</span><div><small>Nominal Arisan</small><strong id="arisanNominalInfo">Rp 0</strong></div></article>
+          </div>
+
+          <form id="arisanForm" class="form-grid panel hidden admin-only">
+            <select id="arisanWarga"></select>
+            <input id="arisanNamaManual" placeholder="Atau tulis nama peserta baru">
+            <input id="arisanNominal" type="number" min="0" placeholder="Nominal arisan">
+            <button class="primary" type="submit">Simpan Peserta</button>
+          </form>
+
+          <div class="toolbar">
+            <input id="searchArisan" placeholder="🔎 Cari nama peserta arisan...">
+          </div>
+
+          <div class="table-wrap panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Nama Peserta</th>
+                  <th>Nominal</th>
+                  <th>Status</th>
+                  <th>Sudah Mendapat Pada</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="arisanRows"></tbody>
+            </table>
+          </div>
+
+          <div class="grid-2">
+            <article class="panel">
+              <h3>🏆 Nama Arisan yang Sudah Mendapat</h3>
+              <div id="arisanSudahList" class="card-list"></div>
+            </article>
+            <article class="panel">
+              <h3>⏳ Peserta yang Belum Mendapat</h3>
+              <div id="arisanBelumList" class="card-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <!-- KEUANGAN -->
+        <section id="page-keuangan" class="page hidden">
+          <div class="page-head"><div><p class="eyebrow">KEUANGAN</p><h2>Pemasukan & Pengeluaran</h2></div></div>
+          <form id="trxForm" class="form-grid panel">
+            <select id="trxJenis"><option value="pemasukan">📥 Pemasukan</option><option value="pengeluaran">📤 Pengeluaran</option></select>
+            <input id="trxTanggal" type="date" required>
+            <input id="trxKategori" placeholder="Kategori" required>
+            <input id="trxNominal" type="number" min="0" placeholder="Nominal" required>
+            <input id="trxKet" placeholder="Keterangan">
+            <button class="primary" type="submit">Tambah Transaksi</button>
+          </form>
+          <div class="table-wrap panel"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Nominal</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody id="trxRows"></tbody></table></div>
+        </section>
+
+        <!-- LAPORAN -->
+        <section id="page-laporan" class="page hidden">
+          <div class="page-head"><div><p class="eyebrow">LAPORAN OTOMATIS</p><h2>Laporan RT</h2></div><button id="printBtn" class="primary">🖨 Cetak / Simpan PDF</button></div>
+          <div class="stats report-stats">
+            <article class="stat"><span>📥</span><div><small>Total Pemasukan</small><strong id="repMasuk">Rp 0</strong></div></article>
+            <article class="stat"><span>📤</span><div><small>Total Pengeluaran</small><strong id="repKeluar">Rp 0</strong></div></article>
+            <article class="stat"><span>💰</span><div><small>Saldo Akhir</small><strong id="repSaldo">Rp 0</strong></div></article>
+            <article class="stat"><span>👥</span><div><small>Total Warga</small><strong id="repWarga">0</strong></div></article>
+          </div>
+          <div class="panel"><h3>Catatan Laporan</h3><p>Versi GitHub ini menggunakan penyimpanan LocalStorage sehingga data tersimpan pada perangkat/browser masing-masing. File <b>supabase-config.js</b> sudah disediakan sebagai persiapan database online.</p></div>
+        </section>
+
+        <!-- PENGUMUMAN -->
+        <section id="page-pengumuman" class="page hidden">
+          <div class="page-head"><div><p class="eyebrow">INFORMASI</p><h2>Pengumuman Warga</h2></div><button id="toggleAnnouncementForm" class="primary admin-only">+ Buat Pengumuman</button></div>
+          <form id="announcementForm" class="panel form-stack hidden admin-only">
+            <input id="annTitle" placeholder="Judul pengumuman" required>
+            <textarea id="annText" placeholder="Isi pengumuman" required></textarea>
+            <button class="primary" type="submit">Publikasikan</button>
+          </form>
+          <div id="announcementList" class="card-list"></div>
+        </section>
+
+        <!-- SURAT -->
+        <section id="page-surat" class="page hidden">
+          <div class="page-head"><div><p class="eyebrow">LAYANAN WARGA</p><h2>Pengajuan Surat</h2></div></div>
+          <form id="letterForm" class="panel form-stack">
+            <select id="letterType"><option>Surat Pengantar RT</option><option>Surat Domisili</option><option>Surat Keterangan</option><option>Lainnya</option></select>
+            <textarea id="letterNote" placeholder="Keperluan / keterangan"></textarea>
+            <button class="primary" type="submit">Ajukan Surat</button>
+          </form>
+          <div id="letterList" class="card-list"></div>
+        </section>
+
+        <!-- KEGIATAN -->
+        <section id="page-kegiatan" class="page hidden">
+          <div class="page-head"><div><p class="eyebrow">DOKUMENTASI</p><h2>Kegiatan RT</h2></div></div>
+          <form id="kegiatanForm" class="panel form-grid">
+            <input id="kegiatanJudul" placeholder="Judul kegiatan" required>
+            <input id="kegiatanTanggal" type="date" required>
+            <textarea id="kegiatanDeskripsi" placeholder="Deskripsi kegiatan"></textarea>
+            <button class="primary admin-only" type="submit">Simpan Kegiatan</button>
+          </form>
+          <div id="kegiatanList" class="card-list"></div>
+        </section>
+
+        <!-- DARURAT -->
+        <section id="page-darurat" class="page hidden">
+          <div class="page-head"><div><p class="eyebrow">KEAMANAN</p><h2>Kontak Darurat</h2></div></div>
+          <div class="emergency-grid">
+            <article class="contact-card"><b>👮 Polisi</b><span>110</span></article>
+            <article class="contact-card"><b>🚑 Ambulans</b><span>119</span></article>
+            <article class="contact-card"><b>🚒 Pemadam</b><span>113</span></article>
+            <article class="contact-card"><b>🏘️ Ketua RT</b><span>Tambahkan nomor</span></article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

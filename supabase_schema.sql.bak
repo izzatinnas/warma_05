@@ -1,0 +1,172 @@
+-- WARMA RT 05/021 - Supabase schema
+-- Jalankan di Supabase SQL Editor.
+create extension if not exists pgcrypto;
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  nama text not null,
+  email text not null,
+  hp text,
+  hp_normalized text,
+  role text not null default 'warga' check (role in ('warga','admin')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.warga (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid unique references public.profiles(id) on delete set null,
+  nama text not null,
+  hp text,
+  hp_normalized text,
+  alamat text,
+  status text not null default 'Aktif' check (status in ('Aktif','Pindah','Nonaktif')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.iuran (
+  id uuid primary key default gen_random_uuid(), warga_id uuid not null references public.warga(id) on delete cascade,
+  period text not null, nominal numeric(14,2) not null default 0 check (nominal >= 0), tanggal date not null default current_date,
+  created_by uuid references public.profiles(id) on delete set null, created_at timestamptz not null default now(), unique(warga_id, period)
+);
+create table if not exists public.arisan (
+  id uuid primary key default gen_random_uuid(), warga_id uuid references public.warga(id) on delete set null, nama text not null,
+  nominal numeric(14,2) not null default 0 check (nominal >= 0), sudah_dapat boolean not null default false, tanggal_dapat date, created_at timestamptz not null default now()
+);
+create table if not exists public.transaksi (
+  id uuid primary key default gen_random_uuid(), jenis text not null check (jenis in ('pemasukan','pengeluaran')), tanggal date not null default current_date,
+  kategori text not null, nominal numeric(14,2) not null default 0 check (nominal >= 0), ket text,
+  created_by uuid references public.profiles(id) on delete set null, created_at timestamptz not null default now()
+);
+create table if not exists public.pengumuman (
+  id uuid primary key default gen_random_uuid(), title text not null, text text not null,
+  created_by uuid references public.profiles(id) on delete set null, created_at timestamptz not null default now()
+);
+create table if not exists public.surat (
+  id uuid primary key default gen_random_uuid(), user_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null, note text, status text not null default 'Menunggu' check (status in ('Menunggu','Diproses','Selesai','Ditolak')), created_at timestamptz not null default now()
+);
+create table if not exists public.kegiatan (
+  id uuid primary key default gen_random_uuid(), title text not null, tanggal date not null default current_date, deskripsi text,
+  created_by uuid references public.profiles(id) on delete set null, created_at timestamptz not null default now()
+);
+create table if not exists public.settings (
+  key text primary key, value text not null, updated_by uuid references public.profiles(id) on delete set null, updated_at timestamptz not null default now()
+);
+insert into public.settings(key,value) values ('iuran_nominal','10000') on conflict (key) do nothing;
+
+-- Tambahkan kolom kontak jika database lama sudah pernah dibuat.
+alter table public.profiles add column if not exists hp_normalized text;
+alter table public.warga add column if not exists hp_normalized text;
+
+-- Nomor WA harus unik agar satu nomor tidak dipakai beberapa akun.
+create unique index if not exists profiles_hp_normalized_unique on public.profiles(hp_normalized) where hp_normalized is not null and hp_normalized <> '';
+create unique index if not exists warga_hp_normalized_unique on public.warga(hp_normalized) where hp_normalized is not null and hp_normalized <> '';
+
+create or replace function public.normalize_id_phone(v text)
+returns text language plpgsql immutable as $$
+declare x text;
+begin
+  x := regexp_replace(coalesce(v,''), '[^0-9+]', '', 'g');
+  if x like '+62%' then x := '0' || substring(x from 4); elsif x like '62%' then x := '0' || substring(x from 3); end if;
+  return x;
+end; $$;
+
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+declare n text; e text; h text; hn text;
+begin
+  n := coalesce(new.raw_user_meta_data->>'nama', split_part(new.email,'@',1));
+  e := lower(new.email);
+  h := coalesce(new.raw_user_meta_data->>'hp','');
+  hn := public.normalize_id_phone(h);
+  insert into public.profiles(id,nama,email,hp,hp_normalized,role)
+  values(new.id,n,e,h,hn,'warga')
+  on conflict (id) do update set nama=excluded.nama,email=excluded.email,hp=excluded.hp,hp_normalized=excluded.hp_normalized;
+  insert into public.warga(user_id,nama,hp,hp_normalized,status)
+  values(new.id,n,h,hn,'Aktif')
+  on conflict (user_id) do update set nama=excluded.nama,hp=excluded.hp,hp_normalized=excluded.hp_normalized;
+  return new;
+end; $$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();
+
+create or replace function public.is_admin()
+returns boolean language sql stable security definer set search_path=public
+as $$ select exists(select 1 from public.profiles where id=auth.uid() and role='admin'); $$;
+
+alter table public.profiles enable row level security;
+alter table public.warga enable row level security;
+alter table public.iuran enable row level security;
+alter table public.arisan enable row level security;
+alter table public.transaksi enable row level security;
+alter table public.pengumuman enable row level security;
+alter table public.surat enable row level security;
+alter table public.kegiatan enable row level security;
+alter table public.settings enable row level security;
+
+do $$ declare r record; begin
+  for r in select schemaname,tablename,policyname from pg_policies where schemaname='public' and tablename in ('profiles','warga','iuran','arisan','transaksi','pengumuman','surat','kegiatan','settings') loop
+    execute format('drop policy if exists %I on %I.%I',r.policyname,r.schemaname,r.tablename);
+  end loop;
+end $$;
+
+create policy profiles_select_auth on public.profiles for select to authenticated using (true);
+create policy profiles_update_self_or_admin on public.profiles for update to authenticated using (id=auth.uid() or public.is_admin()) with check (id=auth.uid() or public.is_admin());
+create policy warga_select_auth on public.warga for select to authenticated using (true);
+create policy warga_insert_admin on public.warga for insert to authenticated with check (public.is_admin());
+create policy warga_update_admin on public.warga for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy warga_delete_admin on public.warga for delete to authenticated using (public.is_admin());
+create policy iuran_select_auth on public.iuran for select to authenticated using (true);
+create policy iuran_insert_admin on public.iuran for insert to authenticated with check (public.is_admin());
+create policy iuran_update_admin on public.iuran for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy iuran_delete_admin on public.iuran for delete to authenticated using (public.is_admin());
+create policy arisan_select_auth on public.arisan for select to authenticated using (true);
+create policy arisan_insert_admin on public.arisan for insert to authenticated with check (public.is_admin());
+create policy arisan_update_admin on public.arisan for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy arisan_delete_admin on public.arisan for delete to authenticated using (public.is_admin());
+create policy trx_select_admin on public.transaksi for select to authenticated using (public.is_admin());
+create policy trx_insert_admin on public.transaksi for insert to authenticated with check (public.is_admin());
+create policy trx_update_admin on public.transaksi for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy trx_delete_admin on public.transaksi for delete to authenticated using (public.is_admin());
+create policy ann_select_auth on public.pengumuman for select to authenticated using (true);
+create policy ann_insert_admin on public.pengumuman for insert to authenticated with check (public.is_admin());
+create policy ann_update_admin on public.pengumuman for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy ann_delete_admin on public.pengumuman for delete to authenticated using (public.is_admin());
+create policy surat_select_own_or_admin on public.surat for select to authenticated using (user_id=auth.uid() or public.is_admin());
+create policy surat_insert_own on public.surat for insert to authenticated with check (user_id=auth.uid());
+create policy surat_update_admin on public.surat for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy surat_delete_own_or_admin on public.surat for delete to authenticated using (user_id=auth.uid() or public.is_admin());
+create policy kegiatan_select_auth on public.kegiatan for select to authenticated using (true);
+create policy kegiatan_insert_admin on public.kegiatan for insert to authenticated with check (public.is_admin());
+create policy kegiatan_update_admin on public.kegiatan for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy kegiatan_delete_admin on public.kegiatan for delete to authenticated using (public.is_admin());
+create policy settings_select_auth on public.settings for select to authenticated using (true);
+create policy settings_insert_admin on public.settings for insert to authenticated with check (public.is_admin());
+create policy settings_update_admin on public.settings for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy settings_delete_admin on public.settings for delete to authenticated using (public.is_admin());
+
+do $$ begin
+  begin alter publication supabase_realtime add table public.warga; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.iuran; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.arisan; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.transaksi; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.pengumuman; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.surat; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.kegiatan; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.settings; exception when duplicate_object then null; end;
+end $$;
+
+-- Setelah akun admin dibuat:
+-- update public.profiles set role='admin' where email='EMAIL_ADMIN_KAMU';
+
+-- Log permintaan reset WhatsApp untuk rate-limit.
+create table if not exists public.recovery_requests (
+  id uuid primary key default gen_random_uuid(),
+  phone_normalized text not null,
+  requested_at timestamptz not null default now()
+);
+create index if not exists recovery_requests_phone_time_idx on public.recovery_requests(phone_normalized, requested_at desc);
+alter table public.recovery_requests enable row level security;
+-- Tidak ada policy publik: tabel ini hanya dipakai oleh Edge Function dengan service_role.
