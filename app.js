@@ -16,8 +16,7 @@ const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustu
 const db = window.WARMA_SUPABASE;
 const sb = (db?.url && db?.key && window.supabase) ? window.supabase.createClient(db.url, db.key) : null;
 let profile = null;
-let data = {warga:[], iuran:[], arisan:[], trx:[], ann:[], letters:[], kegiatan:[], nominal:10000};
-
+let data = {warga:[], iuran:[], arisan:[], trx:[], ann:[], letters:[], kegiatan:[], profiles:[], nominal:10000};
 function escapeHtml(v="") {
   return String(v).replace(/[&<>'"]/g, c => ({
     "&":"&amp;",
@@ -940,15 +939,20 @@ async function refresh(){
         false
       ),
 
-      fetchTable(
-        "kegiatan",
-        "tanggal",
-        false
-      ),
+   fetchTable(
+  "kegiatan",
+  "tanggal",
+  false
+),
 
-      sb
-        .from("settings")
-        .select("key,value")
+sb
+  .from("profiles")
+  .select("id,nama,email,hp,role,status_akun,created_at")
+  .order("created_at", { ascending: false }),
+
+sb
+  .from("settings")
+  .select("key,value")
 
     ]);
 
