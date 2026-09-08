@@ -73,6 +73,9 @@
         <button class="nav-btn" data-page="arisan">🎁 Data Arisan</button>
         <button class="nav-btn admin-only" data-page="keuangan">💰 Keuangan RT</button>
         <button class="nav-btn admin-only" data-page="laporan">📊 Laporan</button>
+        <button class="nav-btn admin-only" data-page="persetujuan">
+  👤 Persetujuan Warga
+</button>
         <button class="nav-btn" data-page="pengumuman">📢 Pengumuman</button>
         <button class="nav-btn" data-page="surat">📄 Surat Warga</button>
         <button class="nav-btn" data-page="kegiatan">📸 Kegiatan</button>
@@ -204,7 +207,69 @@
           </div>
           <div class="panel"><h3>Catatan Laporan</h3><p>Versi GitHub ini menggunakan penyimpanan LocalStorage sehingga data tersimpan pada perangkat/browser masing-masing. File <b>supabase-config.js</b> sudah disediakan sebagai persiapan database online.</p></div>
         </section>
+        <!-- PERSETUJUAN WARGA -->
+<section id="page-persetujuan" class="page hidden admin-only">
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">PENGURUS RT</p>
+      <h2>Persetujuan Warga</h2>
+      <p class="muted">
+        Periksa warga yang sudah memverifikasi email dan menunggu persetujuan.
+      </p>
+    </div>
+  </div>
 
+  <div class="stats">
+    <article class="stat">
+      <span>⏳</span>
+      <div>
+        <small>Menunggu</small>
+        <strong id="approvalWaiting">0</strong>
+      </div>
+    </article>
+
+    <article class="stat">
+      <span>✅</span>
+      <div>
+        <small>Disetujui</small>
+        <strong id="approvalApproved">0</strong>
+      </div>
+    </article>
+
+    <article class="stat">
+      <span>❌</span>
+      <div>
+        <small>Ditolak</small>
+        <strong id="approvalRejected">0</strong>
+      </div>
+    </article>
+  </div>
+
+  <div class="toolbar">
+    <input
+      id="approvalSearch"
+      placeholder="🔎 Cari nama atau email..."
+    >
+  </div>
+
+  <div class="table-wrap panel">
+    <table>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Nama</th>
+          <th>Email</th>
+          <th>WhatsApp</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+
+      <tbody id="approvalRows"></tbody>
+    </table>
+  </div>
+</section>
+        
         <!-- PENGUMUMAN -->
         <section id="page-pengumuman" class="page hidden">
           <div class="page-head"><div><p class="eyebrow">INFORMASI</p><h2>Pengumuman Warga</h2></div><button id="toggleAnnouncementForm" class="primary admin-only">+ Buat Pengumuman</button></div>
