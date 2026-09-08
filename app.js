@@ -1051,6 +1051,71 @@ function subscribeRealtime(){
    RENDER UTAMA
    =========================================================
 */
+function renderApproval(){
+  if(!isAdmin()) return;
+
+  const rows = $("approvalRows");
+  if(!rows) return;
+
+  const search = String($("approvalSearch")?.value || "").toLowerCase().trim();
+
+  const profiles = Array.isArray(data.profiles) ? data.profiles : [];
+
+  const waiting = profiles.filter(x => x.status_akun === "menunggu");
+  const approved = profiles.filter(x => x.status_akun === "disetujui");
+  const rejected = profiles.filter(x => x.status_akun === "ditolak");
+
+  if($("approvalWaiting")) $("approvalWaiting").textContent = waiting.length;
+  if($("approvalApproved")) $("approvalApproved").textContent = approved.length;
+  if($("approvalRejected")) $("approvalRejected").textContent = rejected.length;
+
+  const filtered = waiting.filter(x => {
+    const text = [
+      x.nama || "",
+      x.email || "",
+      x.hp || ""
+    ].join(" ").toLowerCase();
+
+    return !search || text.includes(search);
+  });
+
+  rows.innerHTML = filtered.length
+    ? filtered.map((x,i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${esc(x.nama || "-")}</strong></td>
+        <td>${esc(x.email || "-")}</td>
+        <td>${esc(x.hp || "-")}</td>
+        <td><span class="badge warning">Menunggu</span></td>
+        <td>
+          <button
+            class="btn"
+            type="button"
+            onclick="approveWarga('${x.id}')">
+            ✅ Setujui
+          </button>
+
+          <button
+            class="btn danger"
+            type="button"
+            onclick="rejectWarga('${x.id}')">
+            ❌ Tolak
+          </button>
+        </td>
+      </tr>
+    `).join("")
+    : `
+      <tr>
+        <td colspan="6" class="muted" style="text-align:center;padding:30px">
+          Tidak ada warga yang menunggu persetujuan.
+        </td>
+      </tr>
+    `;
+}
+
+
+
+
 function render(){
 
   const masuk=
