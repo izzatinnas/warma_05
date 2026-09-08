@@ -353,6 +353,7 @@ function showLogin(){
     ann:[],
     letters:[],
     kegiatan:[],
+    profiles:[],
     nominal:10000
   };
 
@@ -717,6 +718,9 @@ if(annForm) annForm.onsubmit=async e=>{
   $("printBtn").onclick=()=>{
     window.print();
   };
+
+  const approvalSearch=$("approvalSearch");
+  if(approvalSearch) approvalSearch.oninput=renderApproval;
 }
 
 
@@ -984,6 +988,8 @@ sb
 
       kegiatan,
 
+      profiles: profiles.data || [],
+
       nominal:
         Number(
           (settings.data||[])
@@ -1032,6 +1038,7 @@ function subscribeRealtime(){
     "pengumuman",
     "surat",
     "kegiatan",
+    "profiles",
     "settings"
   ].forEach(table=>{
 
@@ -1088,9 +1095,9 @@ function renderApproval(){
     ? filtered.map((x,i) => `
       <tr>
         <td>${i + 1}</td>
-        <td><strong>${esc(x.nama || "-")}</strong></td>
-        <td>${esc(x.email || "-")}</td>
-        <td>${esc(x.hp || "-")}</td>
+        <td><strong>${escapeHtml(x.nama || "-")}</strong></td>
+        <td>${escapeHtml(x.email || "-")}</td>
+        <td>${escapeHtml(x.hp || "-")}</td>
         <td><span class="badge warning">Menunggu</span></td>
         <td>
           <button
@@ -1119,7 +1126,25 @@ function renderApproval(){
 }
 
 
+window.approveWarga=async id=>{
+  if(!requireAdmin()) return;
+  if(!confirm("Setujui warga ini?")) return;
+  const {error}=await sb.from("profiles")
+    .update({status_akun:"disetujui"})
+    .eq("id",id);
+  if(error) return alert(errorMessage(error));
+  await refresh();
+};
 
+window.rejectWarga=async id=>{
+  if(!requireAdmin()) return;
+  if(!confirm("Tolak pendaftaran warga ini?")) return;
+  const {error}=await sb.from("profiles")
+    .update({status_akun:"ditolak"})
+    .eq("id",id);
+  if(error) return alert(errorMessage(error));
+  await refresh();
+};
 
 function render(){
 
@@ -1863,4 +1888,3 @@ function renderKegiatan(){
     ).join("")
     ||
     '<div class="empty">Belum ada kegiatan.</div>';
-}
