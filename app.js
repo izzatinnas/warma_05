@@ -893,17 +893,17 @@ async function refresh(){
 
   try{
 
-    const [
-      warga,
-      iuran,
-      arisan,
-      trx,
-      ann,
-      letters,
-      kegiatan,
-      settings
-    ]=await Promise.all([
-
+   const [
+  warga,
+  iuran,
+  arisan,
+  trx,
+  ann,
+  letters,
+  kegiatan,
+  profiles,
+  settings
+]=await Promise.all([
       fetchTable(
         "warga",
         "nama",
