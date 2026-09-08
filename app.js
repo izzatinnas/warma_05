@@ -624,8 +624,9 @@ function bindForms(){
   };
 
 
-  $("annForm").onsubmit=async e=>{
+ const annForm=$("announcementForm") || $("annForm");
 
+if(annForm) annForm.onsubmit=async e=>{
     e.preventDefault();
 
     if(!requireAdmin()){
@@ -691,7 +692,7 @@ function bindForms(){
     }
 
     const row={
-      title:$("kegiatanTitle").value.trim(),
+      title:$("kegiatanJudul").value.trim(),
       tanggal:$("kegiatanTanggal").value,
       deskripsi:$("kegiatanDeskripsi").value.trim(),
       created_by:profile.id
